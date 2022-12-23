@@ -13,7 +13,7 @@ public class ConnectPacket : Packet
     public override void HandlePacket(byte[] packetData, SocketAsyncEventArgs asyncEvent)
     {
         base.HandlePacket(packetData, asyncEvent);
-        if (serverRef.CreateClient(asyncEvent.RemoteEndPoint))
+        if (serverRef.CreateClient((System.Net.IPEndPoint)asyncEvent.RemoteEndPoint))
         {
             ((AcknowledgePacket)serverRef.FindPacket((int)PacketID.Acknowledge)).SendPacket(92);
 

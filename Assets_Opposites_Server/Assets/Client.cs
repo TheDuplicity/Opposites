@@ -6,7 +6,7 @@ using UnityEngine;
 public class Client 
 {
 
-    public System.Net.EndPoint m_clientEndPoint { get; private set; }
+    public System.Net.IPEndPoint m_clientEndPoint { get; private set; }
 
     public SocketAsyncEventArgs m_asyncSendEventArgs;
 
@@ -20,7 +20,7 @@ public class Client
         m_timeSinceLastPacket = 0;
     }
 
-    public Client(System.Net.EndPoint clientEP, SocketAsyncEventArgs setArgs)
+    public Client(System.Net.IPEndPoint clientEP, SocketAsyncEventArgs setArgs)
     {
         m_clientEndPoint = clientEP;
         m_asyncSendEventArgs = setArgs;
@@ -37,6 +37,12 @@ public class Client
         }
         return false;
 
+    }
+
+    public void ResetTimoutTimer()
+    {
+        Debug.Log("client at endpoint: " + m_clientEndPoint + " had their idle timer reset");
+        m_timeSinceLastPacket = 0;
     }
 
     ~Client()

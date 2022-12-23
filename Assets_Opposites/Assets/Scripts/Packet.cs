@@ -12,20 +12,21 @@ public class Packet
         Connect = 1,
         Acknowledge = 2,
         clientRespond = 3,
-        position = 4
-        
+        position = 4,
+        Idle = 5
+
     }
     public PacketID packetID;
 
     public byte[] packetData;
 
-    public Server serverRef;
+    public Client clientRef;
 
     public Packet()
     {
         // default no packet id
         packetID = PacketID.none;
-        serverRef = null;
+        clientRef = null;
     }
 
     public virtual void Unpack()
@@ -53,16 +54,16 @@ public class Packet
     }
 
     protected void AddPacketHeadersAndSend(List<byte> packet)
-    {      
+    {
 
         short packetLength = (short)(packet.Count);
 
         packet.InsertRange(0, BitConverter.GetBytes(packetLength));
 
-        packet.InsertRange(0,BitConverter.GetBytes((short)packetID));
+        packet.InsertRange(0, BitConverter.GetBytes((short)packetID));
 
 
-        serverRef.AddPacketToQueue(packet.ToArray());
+        clientRef.AddPacketToQueue(packet.ToArray());
     }
 
 }

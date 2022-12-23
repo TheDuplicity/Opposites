@@ -26,7 +26,27 @@ public class Server : MonoBehaviour
 
     SocketAsyncEventArgs m_asyncReceiveEventArgs;
 
-    public bool CreateClient(System.Net.EndPoint clientEndPoint)
+    public Client FindClient(System.Net.IPEndPoint clientEP)
+    {
+        foreach (Client client in m_clients)
+        {
+            if (client.m_clientEndPoint.Address == clientEP.Address)
+            {
+                Debug.Log("addresses match");
+            }
+            if (client.m_clientEndPoint.Port == clientEP.Port)
+            {
+                Debug.Log("ports match");
+            }
+            if (client.m_clientEndPoint.Address == clientEP.Address && client.m_clientEndPoint.Port == clientEP.Port)
+            {
+                return client;
+            }
+        }
+        return null;
+    }
+
+    public bool CreateClient(System.Net.IPEndPoint clientEndPoint)
     {
         foreach (Client client in m_clients)
         {
@@ -94,7 +114,7 @@ public class Server : MonoBehaviour
         packetRefs.Add(new PositionPacket());
         packetRefs.Add(new AcknowledgePacket());
         packetRefs.Add( new ConnectPacket());
-        //packetRefs.Add(new Packet());
+        packetRefs.Add(new IdlePacket());
        // packetRefs.Add(new Packet());
         foreach (Packet packet in packetRefs)
         {   
@@ -140,14 +160,12 @@ public class Server : MonoBehaviour
     }
     public void AsyncSendPacket(byte[] packetData)
     {
-        byte[] temp = new byte[packetData.Length];
 
-        packetData.CopyTo(temp, 0);
 
         foreach (Client client in m_clients)
         {
             //send loads of packets to each client 
-            for (int i = 0; i < 20; i++) {
+            for (int i = 0; i < 1; i++) {
                 SocketAsyncEventArgs args = new SocketAsyncEventArgs();
 
                 args.SetBuffer(packetData, 0, packetData.Length);
@@ -156,17 +174,7 @@ public class Server : MonoBehaviour
 
                 Debug.Log("sending packet to endpoint: " + client.m_clientEndPoint);
 
-                //client.m_asyncSendEventArgs.SetBuffer(packetData, 0, packetData.Length);
                 m_listenSocket.SendToAsync(args);
-
-                SocketAsyncEventArgs args2 = new SocketAsyncEventArgs();
-
-                args2.SetBuffer(temp, 0, temp.Length);
-                args2.Completed += OnCompleted;
-                args2.RemoteEndPoint = client.m_clientEndPoint;
-
-                //client.m_asyncSendEventArgs.SetBuffer(temp, 0, temp.Length);
-                m_listenSocket.SendToAsync(args2);
             }
         }
       

@@ -14,10 +14,11 @@ public class AcknowledgePacket : Packet
     public override void HandlePacket(byte[] packetData, SocketAsyncEventArgs asyncEvent)
     {
         base.HandlePacket(packetData, asyncEvent);
+        Debug.Log("received client acknowledgment of our acknowledgement with number: " + BitConverter.ToInt32(packetData, 0));
         //setup packet to send
-        List<byte> sendPacket = new List<byte>();
+       // List<byte> sendPacket = new List<byte>();
         //send packet
-        serverRef.AsyncSendPacket(sendPacket.ToArray());
+        //serverRef.AsyncSendPacket(sendPacket.ToArray());
     }
 
     public void SendPacket(int ackMessage)
