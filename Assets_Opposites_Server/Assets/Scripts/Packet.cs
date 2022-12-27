@@ -24,7 +24,10 @@ public class Packet
         DisconnectBroadcast,
         TowerUpdate,
         MinionUpdate,
-        WorldUpdate
+        WorldUpdate,
+        PlayerDied,
+        TowerShot,
+        LatencyPacket
 
     }
     public PacketID packetID;
@@ -42,13 +45,13 @@ public class Packet
 
     public virtual void Unpack()
     {
-        Debug.Log("packet " + (int)packetID + "unpacking");
+
         return;
     }
 
     public virtual void Pack()
     {
-        Debug.Log("packet " + (int)packetID + "unpacking");
+
         return;
     }
     // i didnt need to havte the byte[] packetdata since it is stored in the async event object but since i added the event later and took a while to realise i had the packet stored in it i never changed it
@@ -60,7 +63,7 @@ public class Packet
 
     public void SendSerialisedPacket(byte[] packetData)
     {
-        Debug.Log("packet " + (int)packetID + " sending");
+
         return;
     }
 

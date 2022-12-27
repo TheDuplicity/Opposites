@@ -24,7 +24,10 @@ public class Packet
         DisconnectBroadcast,
         TowerUpdate,
         MinionUpdate,
-        WorldUpdate
+        WorldUpdate,
+        PlayerDied,
+        TowerShot,
+        LatencyPacket
 
     }
     public PacketID packetID;
@@ -42,25 +45,25 @@ public class Packet
 
     public virtual void Unpack()
     {
-        Debug.Log("packet " + (int)packetID + "unpacking");
+
         return;
     }
 
     public virtual void Pack()
     {
-        Debug.Log("packet " + (int)packetID + "unpacking");
+
         return;
     }
 
     public virtual void HandlePacket(byte[] packetData, SocketAsyncEventArgs asyncEvent)
     {
-        Debug.Log("packet " + (int)packetID + " handling");
+
         return;
     }
 
     public void SendSerialisedPacket(byte[] packetData)
     {
-        Debug.Log("packet " + (int)packetID + " sending");
+
         return;
     }
 

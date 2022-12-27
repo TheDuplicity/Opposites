@@ -7,6 +7,7 @@ public class Minion : Controllable
 {
     [SerializeField] private float speed;
     [SerializeField] private float health;
+    private bool dead = false;
     private List<GameManager.minionDefaultMessage> messages;
     private int maxMessagesStored;
     // Start is called before the first frame update
@@ -54,7 +55,10 @@ public class Minion : Controllable
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-
+        if (dead)
+        {
+            return;
+        }
         GameObject colliderObj = collision.gameObject;
         Debug.Log("collided");
         if (colliderObj.tag == "Bullet")
@@ -64,7 +68,12 @@ public class Minion : Controllable
             takeDamage(bullet.dealDamage());
             Destroy(colliderObj);
         }
-
+        if (colliderObj.tag == "FinishTile")
+        {
+            //increment score
+            GameManager.Instance.minionScore ++;
+            die();
+        }
     }
 
     private void OnTriggerStay2D(Collider2D collision)
@@ -78,12 +87,7 @@ public class Minion : Controllable
             colliderTowardMe.Normalize();
             transform.position += colliderTowardMe * 0.03f * speed;
         }
-        if (colliderObj.tag == "FinishTile")
-        {
-            //increment score
-            GameManager.Instance.minionScore ++;
-            die();
-        }
+
     }
 
    
@@ -99,8 +103,10 @@ public class Minion : Controllable
     }
     public void die()
     {
-        Debug.Log("death");
-        //GameManager.Instance.KillPlayerAndUpdateClients(GetComponent<Controllable>().getId());
+        dead = true;
+        ((PlayerDiedPacket)Server.Instance.FindPacket((int)Packet.PacketID.PlayerDied)).SendPacket(GameManager.Instance.GetInGamePlayerIDs(), GetComponent<Controllable>().getId());
+        GameManager.Instance.removeControllableFromGame(GetComponent<Controllable>().type, GetComponent<Controllable>().getId());
+        Destroy(gameObject);
     }
 
 }

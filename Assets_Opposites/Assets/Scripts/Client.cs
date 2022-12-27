@@ -44,11 +44,19 @@ public class Client : MonoBehaviour
 
     float m_timeSinceLastSentPacket = 0;
 
+    public Queue<float> m_latencies;
+    public List<KeyValuePair< int,float>> m_latencyIDAndSendTime;
+    int totalLatencyPacketsSent = 0;
 
+    public int m_maxLatencies { get; private set;} = 6;
 
     // Start is called before the first frame update
     void Start()
         {
+
+        m_latencies = new Queue<float>();
+
+        m_latencyIDAndSendTime = new List<KeyValuePair<int, float>>();
 
         m_idleMessageTimeThresholds = new List<KeyValuePair<float, bool>>();
 
@@ -74,7 +82,9 @@ public class Client : MonoBehaviour
         m_packetRefs.Add(new TowerUpdatePacket());
         m_packetRefs.Add(new MinionUpdatePacket());
         m_packetRefs.Add(new WorldUpdatePacket());
-
+        m_packetRefs.Add(new PlayerDiedPacket());
+        m_packetRefs.Add(new TowerShotPacket());
+        m_packetRefs.Add(new LatencyPacket());
 
         foreach (Packet packet in m_packetRefs)
         {
@@ -135,6 +145,57 @@ public class Client : MonoBehaviour
         ReadQueuedPackets();
         
 
+    }
+
+    public void StartLatencyChecks(int numberOfSends = 4, float timeBetweenSends = 0.25f)
+    {
+        StartCoroutine(CreateLatencyPacket(numberOfSends, timeBetweenSends));
+    }
+    
+    public void EndLatencyCheck(int latencyID)
+    {
+        foreach (var latencyTimePair in m_latencyIDAndSendTime)
+        {
+            if (latencyTimePair.Key == latencyID)
+            {
+                float latency = Time.realtimeSinceStartup - latencyTimePair.Value;
+                m_latencies.Enqueue(latency);
+                if (m_latencies.Count > m_maxLatencies)
+                {
+                    m_latencies.Dequeue();
+                }
+            }
+        }
+    }
+
+    public float AverageLatency()
+    {
+        if (m_latencies.Count <= 0)
+        {
+            return 0;
+        }
+        float addedLatencies = 0.0f;
+        foreach (float latency in m_latencies)
+        {
+            addedLatencies += latency;
+        }
+        addedLatencies /= (float)m_latencies.Count;
+        return addedLatencies;
+    }
+
+    IEnumerator CreateLatencyPacket(int numberOfSends, float timeBetweenSends)
+    {
+        int i = 0;
+        while (i < numberOfSends)
+        {
+            m_latencyIDAndSendTime.Add(new KeyValuePair<int, float>(totalLatencyPacketsSent, Time.realtimeSinceStartup));
+            ((LatencyPacket)FindPacket(((int)Packet.PacketID.LatencyPacket))).SendPacket(totalLatencyPacketsSent);
+            totalLatencyPacketsSent++;
+
+            yield return new WaitForSeconds(timeBetweenSends); //wait 0.25 seconds per interval
+
+            i++;
+        }
     }
 
     public void setOurID(int newClientID)
@@ -282,7 +343,7 @@ public class Client : MonoBehaviour
         args.Completed += OnCompleted;
         args.RemoteEndPoint = m_serverEndPoint;
         short packID = BitConverter.ToInt16(packet, 0);
-        Debug.Log("sending packet " + packID + " to server endpoint: " + m_serverEndPoint);
+
         if (m_clientSocket != null)
         {
             m_clientSocket.SendToAsync(args);

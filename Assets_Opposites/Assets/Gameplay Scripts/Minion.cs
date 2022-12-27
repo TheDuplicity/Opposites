@@ -201,6 +201,7 @@ public class Minion : Controllable
     }
     public void die()
     {
+        
         Destroy(gameObject);
     }
 

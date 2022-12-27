@@ -107,7 +107,6 @@ public class Tower : Controllable
         //Bullet createBullet = bulletPref.GetComponent<Bullet>();
         GameObject createBullet = Instantiate(bulletPref);
         createBullet.GetComponent<Bullet>().createBulletData(9, 6, 25,transform.position, transform.rotation);
-        GameManager.Instance.SendTowerShotToAllPlayers(GetComponent<Controllable>().getId());
     }
 
     public void SpawnWallAhead()
@@ -139,8 +138,10 @@ public class Tower : Controllable
 
     public void die()
     {
-        Debug.Log("death");
-        //GameManager.Instance.KillPlayerAndUpdateClients(GetComponent<Controllable>().getId());
+
+        ((PlayerDiedPacket)Server.Instance.FindPacket((int)Packet.PacketID.PlayerDied)).SendPacket(GameManager.Instance.GetInGamePlayerIDs(), GetComponent<Controllable>().getId());
+        GameManager.Instance.removeControllableFromGame(GetComponent<Controllable>().type, GetComponent<Controllable>().getId());
+        Destroy(gameObject);
     }
 
 }

@@ -116,17 +116,9 @@ public class GameManager : MonoBehaviour
     public void PlayerDiedBroadcast(int deadPlayerId)
     {
         //first send message to everyone saying the player died
+        ((PlayerDiedPacket)Server.Instance.FindPacket((int)Packet.PacketID.PlayerDied)).SendPacket(GetInGamePlayerIDs(),deadPlayerId);
 
-        foreach (GameObject minion in minions)
-        {
-            //ServerSend.PlayerDied(minion.GetComponent<Controllable>().getId(), deadPlayerId);
-        }
-        foreach (GameObject tower in towers)
-        {
-            //ServerSend.PlayerDied(tower.GetComponent<Controllable>().getId(), deadPlayerId);
-        }
-
-
+        //then kill the player in the server
         for (int i = 0; i < minions.Count; i++)
         {
             if (minions[i].GetComponent<Controllable>().getId() == deadPlayerId)
@@ -165,17 +157,6 @@ public class GameManager : MonoBehaviour
     public void shootBulletFromTower(int towerId)
     {
         returnTowerWithThisClientId(towerId).GetComponent<Tower>().Shoot();
-    }
-    public void SendTowerShotToAllPlayers(int shooterId)
-    {
-        foreach (GameObject player in minions)
-        {
-            //ServerSend.TowerShot(player.GetComponent<Controllable>().getId(), shooterId);
-        }
-        foreach (GameObject player in towers)
-        {
-           // ServerSend.TowerShot(player.GetComponent<Controllable>().getId(), shooterId);
-        }
     }
 
 
@@ -220,7 +201,6 @@ public class GameManager : MonoBehaviour
         towerDefaultMessage[] towerMessages = fillAllTowerMessages();
 
 
-            //ServerSend.SendWorldUpdate(minions[i].GetComponent<Controllable>().getId(), gameTime, minionScore, towerScore, minionMessages, towerMessages);
        ((WorldUpdatePacket)Server.Instance.FindPacket((int)Packet.PacketID.WorldUpdate)).SendPacket(GetInGamePlayerIDs(), gameTime, minionScore, towerScore, minionMessages, towerMessages);
 
 
@@ -481,6 +461,7 @@ public class GameManager : MonoBehaviour
 
     public void deleteControllable(int controllableType, int index)
     {
+
         if (controllableType == 0)
         {
             Destroy(towers[index].gameObject);
@@ -490,6 +471,41 @@ public class GameManager : MonoBehaviour
         {
             Destroy(minions[index].gameObject);
             minions.RemoveAt(index);
+        }
+    }
+
+    public void removeControllableFromGame(int controllableType, int controllableID)
+    {
+        
+        switch (controllableType)
+        {
+            case 0:
+
+                for (int i = 0; i < towers.Count; i++)
+                {
+                    if (towers[i].GetComponent<Controllable>().getId() == controllableID)
+                    {
+                        towers.RemoveAt(i);
+                    }
+                }
+                
+                break;
+
+            case 1:
+
+                for (int i = 0; i < minions.Count; i++)
+                {
+                    if (minions[i].GetComponent<Controllable>().getId() == controllableID)
+                    {
+                        minions.RemoveAt(i);
+                    }
+                }
+
+                break;
+
+            default:
+
+                break;
         }
     }
 

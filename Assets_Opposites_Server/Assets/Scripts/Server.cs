@@ -216,6 +216,9 @@ public class Server : MonoBehaviour
         m_packetRefs.Add(new TowerUpdatePacket());
         m_packetRefs.Add(new MinionUpdatePacket());
         m_packetRefs.Add(new WorldUpdatePacket());
+        m_packetRefs.Add(new PlayerDiedPacket());
+        m_packetRefs.Add(new TowerShotPacket());
+        m_packetRefs.Add(new LatencyPacket());
 
         foreach (Packet packet in m_packetRefs)
         {   
@@ -271,7 +274,7 @@ public class Server : MonoBehaviour
                 GameManager.Instance.RemoveDisconnectedPlayer(clientID);
 
                 Debug.Log("Closed client " + clientID);
-                // add function in game manager to remove the minion/tower associated with the player
+
 
                 return;
             }
@@ -355,7 +358,7 @@ public class Server : MonoBehaviour
                     args.SetBuffer(packetData, 0, packetData.Length);
                     args.Completed += OnCompleted;
                     args.RemoteEndPoint = client.m_clientEndPoint;
-                    Debug.Log("message sent to " + client.m_clientEndPoint.Port);
+
                     short packetID = BitConverter.ToInt16(packetData, 0);
 
                     m_listenSocket.SendToAsync(args);
@@ -387,8 +390,6 @@ public class Server : MonoBehaviour
 
             int packetID = BitConverter.ToInt16(args.Buffer, 0);
             int messageLength = BitConverter.ToInt16(args.Buffer, 2);
-
-            Debug.Log("PacketID: " + packetID + " from port: " + ((System.Net.IPEndPoint)args.RemoteEndPoint).Port);
 
             byte[] packetData = new byte[messageLength];
             Array.Copy(args.Buffer, 4, packetData, 0, messageLength);

@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine.SceneManagement;
 using UnityEngine;
 
 public class GameManager : MonoBehaviour
@@ -40,6 +41,7 @@ public class GameManager : MonoBehaviour
     public float latestServerTime;
 
     public float gameTime { get; private set; }
+    public float baseGameTime { get; private set; }
     public static GameManager Instance { get; private set; }
 
     void Awake()
@@ -75,10 +77,14 @@ public class GameManager : MonoBehaviour
 
         DataFromMenuToLevel instantiateLevelData = FindObjectOfType<DataFromMenuToLevel>();
 
-        //offsetTime = NetworkManager.instance.calculatenetWorkAverageHalfTripTime();
-        //gameTime = instantiateLevelData.serverGameTime + NetworkManager.instance.calculatenetWorkAverageHalfTripTime();
-        gameTime = instantiateLevelData.serverGameTime; // replace this 
+        //get our latencies for the calculation which should take a little longer than a second
+        Client.Instance.StartLatencyChecks(4, 0.25f);
+        // 2 seconds later, set the game time with this new latency information
+        StartCoroutine(setGameTimeWithNewLatency(4 * 0.5f));
 
+        //use the base server gametime as the initial value which will later get the new gametime added
+        gameTime = instantiateLevelData.serverGameTime; // replace this 
+        baseGameTime = gameTime; // make sure basegametime is following along the same timeframe
 
 
         for (int i = 0; i < instantiateLevelData.numPlayers; i++)
@@ -95,10 +101,17 @@ public class GameManager : MonoBehaviour
         gameTime = newTime;
     }
 
+    IEnumerator setGameTimeWithNewLatency(float time)
+    {
+        yield return new WaitForSeconds(time);
+        gameTime = Client.Instance.AverageLatency() + baseGameTime;
+        Debug.Log("base game time: " + baseGameTime + ", time with latency added: " + gameTime);
+    }
+
     // Update is called once per frame
     void Update()
     {
-        getBetterLatencyVal();
+
         sendUpdateTimer += Time.deltaTime;
         //send update every 50 ms
         if (sendUpdateTimer > Client.Instance.m_networkSendRate)
@@ -114,7 +127,7 @@ public class GameManager : MonoBehaviour
 
 
         gameTime += Time.deltaTime;
-
+        baseGameTime += Time.deltaTime;
 
         // Debug.Log($"server time: {latestServerTime}, game time {gameTime}, offset {offsetTime}, difference in time: {gameTime - latestServerTime}");
 
@@ -127,24 +140,6 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    private void getBetterLatencyVal()
-    {
-        if (pingTimeCount > 0)
-        {
-            pingTimeTimer += Time.deltaTime;
-            if (pingTimeTimer > 2)
-            {
-                pingTimeCount--;
-                //NetworkManager.instance.pingServerForRoundTripTime(3);
-                if (pingTimeCount == 0)
-                {
-                    // offsetTime = NetworkManager.instance.calculatenetWorkAverageHalfTripTime();
-                    offsetTime = 0; //remove this
-                    updateTimerWithOffsetTime = true;
-                }
-            }
-        }
-    }
     public void KillObject(int objectId)
     {
         GameObject killObject = returnObjectWithThisClientId(objectId);
@@ -159,7 +154,7 @@ public class GameManager : MonoBehaviour
             }
         }
         int objType = killObject.GetComponent<Controllable>().getType();
-
+        //tower
         if (objType == 0)
         {
             for (int i = 0; i < towers.Count; i++)
@@ -168,9 +163,7 @@ public class GameManager : MonoBehaviour
                 {
                     killObject.GetComponent<Tower>().die();
                     towers.RemoveAt(i);
-                    //kick from game if tower dies
-                    //
-                    //
+
                     break;
                 }
 
@@ -224,7 +217,7 @@ public class GameManager : MonoBehaviour
         newObject.transform.rotation = Quaternion.Euler(0, 0, zRot);
         newObject.GetComponent<Controllable>().setId(id);
 
-        //if the id of this player in the game is our id the this is us
+        //if the id of this player in the game is our id then this is us
         if (id == Client.Instance.m_myID)
         {
             setPlayer(newObject);
@@ -242,7 +235,7 @@ public class GameManager : MonoBehaviour
             message.time = gameTime;
             message.clientId = player.GetComponent<Controllable>().getId();
             message.zRotation = player.transform.rotation.eulerAngles.z;
-            //ClientSend.SendTowerUpdate(message);
+
             ((TowerUpdatePacket)Client.Instance.FindPacket((int)Packet.PacketID.TowerUpdate)).SendPacket(message);
         }
         else
@@ -251,7 +244,7 @@ public class GameManager : MonoBehaviour
             message.time = gameTime;
             message.clientId = player.GetComponent<Controllable>().getId();
             message.position = new Vector2(player.transform.position.x, player.transform.position.y);
-            // ClientSend.SendMinionUpdate(message);
+
             ((MinionUpdatePacket)Client.Instance.FindPacket((int)Packet.PacketID.MinionUpdate)).SendPacket(message);
         }
     }

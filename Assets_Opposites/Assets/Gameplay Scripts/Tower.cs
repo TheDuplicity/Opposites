@@ -137,7 +137,7 @@ public class Tower : Controllable
         {
             return;
         }
-        //ClientSend.ShotBullet();
+        ((TowerShotPacket)Client.Instance.FindPacket((int)Packet.PacketID.TowerShot)).SendPacket();
         //spawn bullet with initial values
         shootCooldown = 0.35f;
         numBullets--;
