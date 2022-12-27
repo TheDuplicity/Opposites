@@ -9,40 +9,79 @@ using UnityEngine;
 public class Client : MonoBehaviour
 {
 
+    public static Client Instance { get; private set; }
+
+    void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+        else if (Instance != this)
+        {
+            Destroy(this);
+        }
+
+    }
+
+    public int m_bufferSize { get; private set; } = 450;
+    // 20 updates a second
+    public float m_networkSendRate = (float)0.05;
+    public int m_myID { get; private set; } = -1;
+
     Socket m_clientSocket;
     System.Net.IPAddress m_serverSocketIPAddress;
     System.Net.IPEndPoint m_serverEndPoint;
 
-    Queue<byte[]> m_pendingPackets;
+    Queue<byte[]> m_pendingSendPackets;
+    Queue<SocketAsyncEventArgs> m_pendingReads;
     List<Packet> m_packetRefs;
-    // send a message after2.5 seconds
+
     float m_timeSinceLastReceivedPacket = 0;
 
+    // send a message after2.5 seconds
     List<KeyValuePair<float, bool>> m_idleMessageTimeThresholds;
-    float m_timeoutVal = 5;
+
     float m_timeSinceLastSentPacket = 0;
+
+
 
     // Start is called before the first frame update
     void Start()
-    {
+        {
 
         m_idleMessageTimeThresholds = new List<KeyValuePair<float, bool>>();
 
         m_idleMessageTimeThresholds.Add(new KeyValuePair<float, bool>((float)2.5, false));
         m_idleMessageTimeThresholds.Add(new KeyValuePair<float, bool>((float)3.5, false));
 
-        m_pendingPackets = new Queue<byte[]>();
+        m_pendingSendPackets = new Queue<byte[]>();
+
+        m_pendingReads = new Queue<SocketAsyncEventArgs>();
 
         m_packetRefs = new List<Packet>();
         m_packetRefs.Add(new AcknowledgePacket());
         m_packetRefs.Add(new IdlePacket());
+        m_packetRefs.Add(new ConnectPacket()); 
+        m_packetRefs.Add(new RandomPacket());
+        m_packetRefs.Add(new SpawnPlayerPacket());
+        m_packetRefs.Add(new SpawnMinionPacket());
+        m_packetRefs.Add(new SpawnTowerPacket());
+        m_packetRefs.Add(new NewPlayerSpawnPacket());
+        m_packetRefs.Add(new JoinGameDataPacket());
+        m_packetRefs.Add(new DisconnectPacket());
+        m_packetRefs.Add(new DisconnectBroadcastPacket());
+        m_packetRefs.Add(new TowerUpdatePacket());
+        m_packetRefs.Add(new MinionUpdatePacket());
+        m_packetRefs.Add(new WorldUpdatePacket());
+
 
         foreach (Packet packet in m_packetRefs)
         {
             packet.clientRef = this;
         }
 
-        m_clientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+        m_clientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);     
 
         byte[] m_serverIP = new byte[4];
         m_serverIP[0] = 127;
@@ -53,25 +92,9 @@ public class Client : MonoBehaviour
         m_serverSocketIPAddress = new System.Net.IPAddress(m_serverIP);
         m_serverEndPoint = new System.Net.IPEndPoint(m_serverSocketIPAddress, 32612);
 
-        List<byte> sendData = new List<byte>();
-        short packetID = 1, clientID = 1;
-        sendData.AddRange(BitConverter.GetBytes(packetID));
-
-        int x = 10, y = 839, z = 123;
-        sendData.AddRange(BitConverter.GetBytes(clientID));
-        sendData.AddRange(BitConverter.GetBytes(x));
-        sendData.AddRange(BitConverter.GetBytes(y));
-        sendData.AddRange(BitConverter.GetBytes(z));
-        short packetLength = (short)(sendData.Count - 2);
-        sendData.InsertRange(2, BitConverter.GetBytes(packetLength));
-        byte[] check = new byte[sendData.Count];
-        check = sendData.ToArray();
-        m_clientSocket.SendTo(sendData.ToArray(), m_serverEndPoint);
-
-
         SocketAsyncEventArgs arg = new SocketAsyncEventArgs();
 
-        arg.SetBuffer(new byte[256], 0, 256);
+        arg.SetBuffer(new byte[m_bufferSize], 0, m_bufferSize);
 
         arg.Completed += OnCompleted;
 
@@ -83,14 +106,55 @@ public class Client : MonoBehaviour
         }
 
     }
+ 
+    // Update is called once per frame   
+    void Update()
+    {
 
+
+        m_timeSinceLastSentPacket += Time.deltaTime;
+        m_timeSinceLastReceivedPacket += Time.deltaTime;
+
+            for (int i = 0; i < m_idleMessageTimeThresholds.Count; i++)
+            {
+                KeyValuePair<float, bool> timeThreshold = m_idleMessageTimeThresholds[i];
+                if (m_timeSinceLastSentPacket >= timeThreshold.Key && !timeThreshold.Value)
+                {
+                    //queue up an idleCheck Packet
+                    ((IdlePacket)(FindPacket((int)Packet.PacketID.Idle))).SendPacket();
+                    m_idleMessageTimeThresholds[i] = new KeyValuePair<float, bool>(timeThreshold.Key, true);
+                    break;
+                }
+            }
+
+        if (m_pendingSendPackets.Count > 0)
+        {
+            SendPackets();
+        }
+
+        ReadQueuedPackets();
+        
+
+    }
+
+    public void setOurID(int newClientID)
+    {
+        m_myID = newClientID;
+    }
     public void AddPacketToQueue(byte[] packet)
     {
-        m_pendingPackets.Enqueue(packet);
+        m_pendingSendPackets.Enqueue(packet);
     }
 
     void SendPackets()
     {
+
+        foreach (byte[] packet in m_pendingSendPackets)
+        {
+            AsyncSendPacket(packet);
+        }
+        m_pendingSendPackets.Clear();
+
         for (int i = 0; i < m_idleMessageTimeThresholds.Count; i++)
         {
             if (m_idleMessageTimeThresholds[i].Value == true)
@@ -98,6 +162,8 @@ public class Client : MonoBehaviour
                 m_idleMessageTimeThresholds[i] = new KeyValuePair<float, bool>(m_idleMessageTimeThresholds[i].Key, false);
             }
         }
+
+        m_timeSinceLastSentPacket = 0;
 
     }
 
@@ -132,63 +198,69 @@ public class Client : MonoBehaviour
                 break;
         }
     }
-
-
-
-    void HandleReceive(SocketAsyncEventArgs args)
+    public void ReadQueuedPackets()
     {
-
-        short packetReceivedID = BitConverter.ToInt16(args.Buffer, 0);
-        short messageLength = BitConverter.ToInt16(args.Buffer, 2);
-
-        byte[] packetData = new byte[messageLength];
-        Array.Copy(args.Buffer, 4, packetData, 0, messageLength);
-
-        foreach (Packet packet in m_packetRefs)
+        //cant use for or foreach loop in case the number of socketasynceventargs objects in the m_pendingreads queue is increased as other asynchronous operations queue more packets
+        while (true)
         {
-            if ((short)packet.packetID == packetReceivedID)
+            SocketAsyncEventArgs args;
+            // if there are more args inthe queue, take one while locked and handle
+            lock (m_pendingReads)
             {
-                packet.HandlePacket(packetData, args);
-            }
-        }
-
-       // Debug.Log("PacketID: " + packetReceivedID + ", number sent: " + numbersend);
-
-        if (!m_clientSocket.ReceiveFromAsync(args))
-        {
-            OnCompleted(this, args);
-        }
-    }
-
-
-    // Update is called once per frame
-    void Update()
-    {
-        m_timeSinceLastSentPacket += Time.deltaTime;
-        m_timeSinceLastReceivedPacket += Time.deltaTime;
-
-            for (int i = 0; i < m_idleMessageTimeThresholds.Count; i++)
-            {
-                KeyValuePair<float, bool> timeThreshold = m_idleMessageTimeThresholds[i];
-                if (m_timeSinceLastReceivedPacket >= timeThreshold.Key && !timeThreshold.Value)
+                if (m_pendingReads.Count > 0)
                 {
-                    //queue up an idleCheck Packet
-                    IdlePacket p = (IdlePacket)(FindPacket((int)Packet.PacketID.Idle));
-                    p.SendPacket();
-                    m_idleMessageTimeThresholds[i] = new KeyValuePair<float, bool>(timeThreshold.Key, true);
+                    args = m_pendingReads.Dequeue();
+                }
+                else
+                {
                     break;
                 }
+
             }
+
+            short packetReceivedID = BitConverter.ToInt16(args.Buffer, 0);
+            short messageLength = BitConverter.ToInt16(args.Buffer, 2);
+
+            byte[] packetData = new byte[messageLength];
+            Array.Copy(args.Buffer, 4, packetData, 0, messageLength);
+
+            foreach (Packet packet in m_packetRefs)
+            {
+                if ((short)packet.packetID == packetReceivedID)
+                {
+                    packet.HandlePacket(packetData, args);
+                }
+            }
+        }
+
 
         
 
-        foreach (byte[] packet in m_pendingPackets)
-        {
-            AsyncSendPacket(packet);
-        }
-        m_pendingPackets.Clear();
-
     }
+    void HandleReceive(SocketAsyncEventArgs args)
+    {
+        // use the async event args to handle the received data later on the main thread
+        lock (m_pendingReads)
+        {
+            m_pendingReads.Enqueue(args);
+        }
+        //creating a new event argument for the next read allows the old argument to be passed into the functions for use in main thread functionality so packet handling can call gameobject related code
+        SocketAsyncEventArgs newArg = new SocketAsyncEventArgs();
+
+        newArg.SetBuffer(new byte[m_bufferSize], 0, m_bufferSize);
+
+        newArg.Completed += OnCompleted;
+
+        newArg.RemoteEndPoint = new System.Net.IPEndPoint(System.Net.IPAddress.IPv6Any, 0);
+        // keep receiving with our new argument object for the new data
+        if (!m_clientSocket.ReceiveFromAsync(newArg))
+        {
+            OnCompleted(this, newArg);
+        }
+    }
+
+
+
 
     public Packet FindPacket(int packetID)
     {
@@ -209,12 +281,24 @@ public class Client : MonoBehaviour
         args.SetBuffer(packet, 0, packet.Length);
         args.Completed += OnCompleted;
         args.RemoteEndPoint = m_serverEndPoint;
+        short packID = BitConverter.ToInt16(packet, 0);
+        Debug.Log("sending packet " + packID + " to server endpoint: " + m_serverEndPoint);
+        if (m_clientSocket != null)
+        {
+            m_clientSocket.SendToAsync(args);
+        }
 
-        Debug.Log("sending packet to server endpoint: " + m_serverEndPoint);
 
-
-        m_clientSocket.SendToAsync(args);
     }
+    
+    private void OnDestroy()
+    {
+        m_clientSocket.Shutdown(SocketShutdown.Both);
+        m_clientSocket.Close();
+        m_clientSocket = null;
+
+    }
+
 
 }
 

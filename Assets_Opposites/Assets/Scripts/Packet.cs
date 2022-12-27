@@ -13,7 +13,18 @@ public class Packet
         Acknowledge = 2,
         clientRespond = 3,
         position = 4,
-        Idle = 5
+        Idle = 5,
+        Random,
+        SpawnPlayer,
+        NewPlayerSpawnPacket,
+        SpawnTower,
+        SpawnMinion,
+        JoinGameDataPacket,
+        Disconnect,
+        DisconnectBroadcast,
+        TowerUpdate,
+        MinionUpdate,
+        WorldUpdate
 
     }
     public PacketID packetID;
@@ -55,9 +66,9 @@ public class Packet
 
     protected void AddPacketHeadersAndSend(List<byte> packet)
     {
-
+ 
         short packetLength = (short)(packet.Count);
-
+        
         packet.InsertRange(0, BitConverter.GetBytes(packetLength));
 
         packet.InsertRange(0, BitConverter.GetBytes((short)packetID));
