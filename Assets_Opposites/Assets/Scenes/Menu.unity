@@ -317,7 +317,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 1}
   m_AnchorMax: {x: 0.5, y: 1}
-  m_AnchoredPosition: {x: -100, y: 0}
+  m_AnchoredPosition: {x: -200, y: 0}
   m_SizeDelta: {x: 160, y: 30}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1302306594
@@ -353,7 +353,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 1
     m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: Tower D
+  m_Text: Opposites
 --- !u!222 &1302306595
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -764,6 +764,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dc99cb1d2edf6a14c8eee249c737bbe3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  m_networkSendRate: 0.05
 --- !u!4 &6412473458642253394
 Transform:
   m_ObjectHideFlags: 0

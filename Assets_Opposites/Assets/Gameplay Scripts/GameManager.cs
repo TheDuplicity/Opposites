@@ -263,7 +263,7 @@ public class GameManager : MonoBehaviour
                 continue;
             }
 
-            selectedMinion.GetComponent<Minion>().AddMessage(minionMessages[i]);
+            selectedMinion.GetComponent<Minion>().HandleNewMessage(minionMessages[i]);
         }
         for (int i = 0; i < towerMessages.Length; i++)
         {
@@ -373,6 +373,5 @@ public class GameManager : MonoBehaviour
     public void spawnAsMinion()
     {
         ((SpawnMinionPacket)Client.Instance.FindPacket((int)Packet.PacketID.SpawnMinion)).SendPacket(true);
-        //ClientSend.AttemptMinionCreation(true);
     }
 }

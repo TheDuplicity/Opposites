@@ -15,7 +15,7 @@ public class TowerShotPacket : Packet
         int arrPos;
         int shotClientID = serverRef.FindClient((System.Net.IPEndPoint)asyncEvent.RemoteEndPoint, out arrPos).m_ID;
         GameManager.Instance.shootBulletFromTower(shotClientID);
-        SendPacket(GameManager.Instance.GetInGamePlayerIDs(), shotClientID);
+        SendPacket(GameManager.Instance.GetInGamePlayerAndSpectatorIDs(), shotClientID);
     }
     public void SendPacket(int[] toClients, int towerShotId)
     {

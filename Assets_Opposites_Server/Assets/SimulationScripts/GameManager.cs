@@ -30,6 +30,8 @@ public class GameManager : MonoBehaviour
 
     public bool gameStarted;
 
+    public List<int> spectatorIDs { get; private set; }
+
     Vector3 PathStart;
 
     public int minionScore;
@@ -66,7 +68,7 @@ public class GameManager : MonoBehaviour
         minionScore = 0;
         towerScore = 0;
 
-        
+        spectatorIDs = new List<int>();
 
     }
 
@@ -86,7 +88,7 @@ public class GameManager : MonoBehaviour
         }
         gameTime += Time.deltaTime;
         sendPlayerUpdatesTimer += Time.deltaTime;
-        if (sendPlayerUpdatesTimer > 0.05)
+        if (sendPlayerUpdatesTimer > Server.Instance.m_serverSendRate)
         {
             sendPlayerUpdatesTimer = 0;
             sendDefaultUpdatesToEveryone();
@@ -116,7 +118,7 @@ public class GameManager : MonoBehaviour
     public void PlayerDiedBroadcast(int deadPlayerId)
     {
         //first send message to everyone saying the player died
-        ((PlayerDiedPacket)Server.Instance.FindPacket((int)Packet.PacketID.PlayerDied)).SendPacket(GetInGamePlayerIDs(),deadPlayerId);
+        ((PlayerDiedPacket)Server.Instance.FindPacket((int)Packet.PacketID.PlayerDied)).SendPacket(GetInGamePlayerAndSpectatorIDs(),deadPlayerId);
 
         //then kill the player in the server
         for (int i = 0; i < minions.Count; i++)
@@ -200,8 +202,8 @@ public class GameManager : MonoBehaviour
         minionDefaultMessage[] minionMessages = fillAllMinionMessages();
         towerDefaultMessage[] towerMessages = fillAllTowerMessages();
 
-
-       ((WorldUpdatePacket)Server.Instance.FindPacket((int)Packet.PacketID.WorldUpdate)).SendPacket(GetInGamePlayerIDs(), gameTime, minionScore, towerScore, minionMessages, towerMessages);
+        
+       ((WorldUpdatePacket)Server.Instance.FindPacket((int)Packet.PacketID.WorldUpdate)).SendPacket(GetInGamePlayerAndSpectatorIDs(), gameTime, minionScore, towerScore, minionMessages, towerMessages);
 
 
     }
@@ -325,6 +327,16 @@ public class GameManager : MonoBehaviour
         }
         int arrPos;
         Server.Instance.FindClient(clientId, out arrPos).m_inGame = true;
+
+        for (int i = 0; i < spectatorIDs.Count; i++)
+        {
+            if (clientId == spectatorIDs[i])
+            {
+                spectatorIDs.RemoveAt(i);
+                break;
+            }
+        }
+
         GameObject newMinion = Instantiate(minionPrefab);
         newMinion.transform.position = PathStart;
         newMinion.GetComponent<Controllable>().setId(clientId);
@@ -341,6 +353,16 @@ public class GameManager : MonoBehaviour
         int arrPos;
         Server.Instance.FindClient(clientId, out arrPos).m_inGame = true; 
         Debug.Log($"spawning tower for client {clientId} at position {spawnPos}");
+
+        for (int i = 0; i < spectatorIDs.Count; i++)
+        {
+            if (clientId == spectatorIDs[i])
+            {
+                spectatorIDs.RemoveAt(i);
+                break;
+            }
+        }
+
         GameObject newTower = Instantiate(towerPrefab);
         newTower.GetComponent<Controllable>().setId(clientId);
         newTower.transform.position = spawnPos;
@@ -439,6 +461,14 @@ public class GameManager : MonoBehaviour
         return outIDs;
     }
 
+    public int[] GetInGamePlayerAndSpectatorIDs()
+    {
+        List<int> playerAndSpectatorIDs = new List<int>();
+        playerAndSpectatorIDs.AddRange(GetInGamePlayerIDs());
+        playerAndSpectatorIDs.AddRange(spectatorIDs);
+        return playerAndSpectatorIDs.ToArray();
+    }
+
     public KeyValuePair<int, int> findControllableObjectTypeAndIndex(GameObject controllableObj)
     {
         for (int i = 0; i < minions.Count; i++)
@@ -507,6 +537,25 @@ public class GameManager : MonoBehaviour
 
                 break;
         }
+        // add this controllable to the spectators if they died and arent spectating
+
+        if (!IsInSpectatorList(controllableID))
+        {
+            spectatorIDs.Add(controllableID);
+        }
+
+    }
+
+    public bool IsInSpectatorList(int clientID)
+    {
+        foreach (int ID in spectatorIDs)
+        {
+            if (ID == clientID)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void RemoveDisconnectedPlayer(int disconnectedClientID)

@@ -139,7 +139,7 @@ public class Tower : Controllable
     public void die()
     {
 
-        ((PlayerDiedPacket)Server.Instance.FindPacket((int)Packet.PacketID.PlayerDied)).SendPacket(GameManager.Instance.GetInGamePlayerIDs(), GetComponent<Controllable>().getId());
+        ((PlayerDiedPacket)Server.Instance.FindPacket((int)Packet.PacketID.PlayerDied)).SendPacket(GameManager.Instance.GetInGamePlayerAndSpectatorIDs(), GetComponent<Controllable>().getId());
         GameManager.Instance.removeControllableFromGame(GetComponent<Controllable>().type, GetComponent<Controllable>().getId());
         Destroy(gameObject);
     }

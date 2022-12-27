@@ -27,6 +27,8 @@ public class Server : MonoBehaviour
 
     int m_newClientID = 0;
 
+    public float m_serverSendRate { get; private set;} = 0.1f;
+
     float broadcasttimer = 0;
     int randomcounter = -2;
 
@@ -267,7 +269,7 @@ public class Server : MonoBehaviour
                 if (m_clients[i].m_inGame)
                 {
                     
-                    ((DisconnectBroadcastPacket)FindPacket((int)Packet.PacketID.DisconnectBroadcast)).SendPacket(clientID, GameManager.Instance.GetInGamePlayerIDs());
+                    ((DisconnectBroadcastPacket)FindPacket((int)Packet.PacketID.DisconnectBroadcast)).SendPacket(clientID, GameManager.Instance.GetInGamePlayerAndSpectatorIDs());
                 }
 
                 m_clients.RemoveAt(i);
@@ -288,7 +290,7 @@ public class Server : MonoBehaviour
         //better to search for the client in game to see if they exist rather than have that data stored in a bool where its value might be incorrect
         if (client.m_inGame)
         {
-            ((DisconnectBroadcastPacket)FindPacket((int)Packet.PacketID.DisconnectBroadcast)).SendPacket(m_clients[clientArrPos].m_ID, GameManager.Instance.GetInGamePlayerIDs());
+            ((DisconnectBroadcastPacket)FindPacket((int)Packet.PacketID.DisconnectBroadcast)).SendPacket(m_clients[clientArrPos].m_ID, GameManager.Instance.GetInGamePlayerAndSpectatorIDs());
         }
         GameManager.Instance.RemoveDisconnectedPlayer(client.m_ID);
 
